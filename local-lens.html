@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Local Lens — City Events Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --color-bg: #0a0a0a;
+    --color-bg-elev: #111111;
+    --color-bg-elev-2: #1a1a1a;
+    --color-text: #f5f2eb;
+    --color-text-muted: #8a8780;
+    --color-text-dim: #555555;
+    --color-text-faint: #444444;
+    --color-accent: #c8a96e;
+    --color-border: #1e1e1e;
+    --color-border-input: #222222;
+
+    --max-width: 720px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+
+    --transition: 200ms ease;
+
+    --mono: ui-monospace, 'SF Mono', 'Menlo', 'Roboto Mono', monospace;
+  }
+
+  /* ---------- Reset & base ---------- */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input { font-family: inherit; }
+
+  .app {
+    max-width: var(--max-width);
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* ---------- Sticky header ---------- */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(10, 10, 10, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    padding: 20px 20px 0;
+  }
+  .header-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .app-title {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .view-toggle {
+    display: flex;
+    gap: 18px;
+  }
+  .toggle-btn {
+    position: relative;
+    padding: 4px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-dim);
+    letter-spacing: 0.02em;
+    transition: color var(--transition);
+  }
+  .toggle-btn:hover { color: var(--color-text-muted); }
+  .toggle-btn.active {
+    color: var(--color-text);
+  }
+  .toggle-btn.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 2px;
+    background: var(--color-accent);
+  }
+
+  /* ---------- Search ---------- */
+  .search-wrap {
+    position: relative;
+    padding-bottom: 16px;
+  }
+  .search-input {
+    width: 100%;
+    padding: 10px 12px 10px 32px;
+    background: #111;
+    border: 1px solid var(--color-border-input);
+    color: var(--color-text);
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    transition: border var(--transition);
+  }
+  .search-input::placeholder { color: var(--color-text-faint); }
+  .search-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+  .search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translate(0, calc(-50% - 8px));
+    color: var(--color-text-faint);
+    pointer-events: none;
+    font-size: 12px;
+  }
+
+  /* ---------- Category filters ---------- */
+  .categories {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 0 18px;
+    scrollbar-width: none;
+  }
+  .categories::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid var(--color-border-input);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color var(--transition), background var(--transition), color var(--transition);
+  }
+  .cat-btn.text {
+    width: auto;
+    padding: 0 12px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-radius: 16px;
+  }
+  .cat-btn:hover { border-color: var(--color-text-muted); }
+  .cat-btn.active {
+    background: var(--color-text);
+    border-color: var(--color-text);
+    color: var(--color-bg);
+  }
+  .cat-btn.text.active {
+    background: var(--color-text);
+    color: var(--color-bg);
+  }
+
+  /* ---------- Active filter pills ---------- */
+  .active-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 16px;
+  }
+  .active-pills:empty { display: none; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 6px 3px 10px;
+    background: transparent;
+    border: 1px solid var(--color-accent);
+    color: var(--color-accent);
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .pill-close {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--color-accent);
+    transition: background var(--transition);
+  }
+  .pill-close:hover { background: rgba(200, 169, 110, 0.2); }
+
+  /* ---------- Main content ---------- */
+  .main { padding: 0 20px; }
+
+  /* ---------- List view: editorial rows ---------- */
+  .event-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .event-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+    transition: opacity var(--transition);
+  }
+  .event-card:hover { opacity: 0.75; }
+  .event-card:last-child { border-bottom: 1px solid var(--color-border); }
+
+  .event-date-col {
+    flex: 0 0 56px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--color-text-dim);
+    letter-spacing: 0.02em;
+    padding-top: 3px;
+    line-height: 1.4;
+  }
+  .event-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .event-title {
+    font-size: 17px;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    color: var(--color-text);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .now-dot {
+    color: var(--color-accent);
+    font-size: 10px;
+    line-height: 1;
+    flex: 0 0 auto;
+    transform: translateY(-2px);
+  }
+  .event-meta {
+    font-size: 10px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .event-bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .price-badge {
+    font-size: 10px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .badge-week {
+    font-size: 10px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+  }
+  .chevron {
+    align-self: flex-start;
+    color: var(--color-text-faint);
+    font-size: 18px;
+    flex: 0 0 auto;
+    padding-top: 2px;
+    transition: color var(--transition), transform var(--transition);
+  }
+  .event-card:hover .chevron {
+    color: var(--color-accent);
+    transform: translateX(2px);
+  }
+
+  /* ---------- Skeleton ---------- */
+  .skeleton-card {
+    display: flex;
+    gap: 18px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .skel {
+    background: linear-gradient(90deg, rgba(245,242,235,0.04) 0%, rgba(245,242,235,0.08) 50%, rgba(245,242,235,0.04) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 2px;
+  }
+  .skel-date { width: 40px; height: 12px; flex: 0 0 56px; }
+  .skel-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 2px 0; }
+  .skel-line { height: 14px; }
+  .skel-line.short { width: 40%; height: 10px; }
+  .skel-line.med { width: 75%; }
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ---------- Empty state ---------- */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--color-text-muted);
+  }
+  .empty-state .icon { font-size: 32px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ---------- Timeline view ---------- */
+  .timeline-wrap {
+    overflow-x: auto;
+    background: var(--color-bg-elev);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+  .timeline {
+    position: relative;
+    display: grid;
+    /* venue col + N date cols set in JS */
+    min-width: 100%;
+  }
+  .tl-header-cell, .tl-venue-cell, .tl-row-cell {
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+    padding: 8px 6px;
+    font-size: 11px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .tl-header-cell {
+    background: var(--color-bg-elev-2);
+    color: var(--color-text-muted);
+    justify-content: center;
+    font-weight: 500;
+    font-size: 10px;
+    text-align: center;
+    flex-direction: column;
+    gap: 1px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .tl-header-cell .day-num {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-text);
+  }
+  .tl-header-cell.today {
+    color: var(--color-accent);
+  }
+  .tl-header-cell.today .day-num { color: var(--color-accent); }
+
+  .tl-venue-cell {
+    background: var(--color-bg-elev);
+    color: var(--color-text);
+    font-weight: 500;
+    font-size: 12px;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    border-right: 1px solid var(--color-border-strong);
+  }
+  .tl-venue-cell.corner {
+    z-index: 4;
+    top: 0;
+    background: var(--color-bg-elev-2);
+  }
+  .tl-row-cell {
+    background: var(--color-bg);
+  }
+
+  /* Today line overlay */
+  .today-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--color-accent);
+    z-index: 4;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(200, 169, 110, 0.5);
+  }
+
+  /* Event bars */
+  .event-bar {
+    position: absolute;
+    height: 28px;
+    border-radius: 4px;
+    padding: 0 8px;
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--color-accent);
+    background: transparent;
+    border: 1px solid var(--color-accent);
+    cursor: pointer;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    z-index: 1;
+    transition: background var(--transition);
+  }
+  .event-bar:hover {
+    background: rgba(200, 169, 110, 0.12);
+    z-index: 5;
+  }
+
+  /* ---------- Modal / Bottom sheet ---------- */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition);
+  }
+  .modal-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .bottom-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-width: var(--max-width);
+    margin: 0 auto;
+    background: #111;
+    border-top: 1px solid var(--color-border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 24px 32px;
+    z-index: 101;
+    transform: translateY(100%);
+    transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .bottom-sheet.open { transform: translateY(0); }
+  .sheet-handle {
+    width: 36px;
+    height: 3px;
+    background: var(--color-border-input);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .sheet-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    color: var(--color-text-dim);
+    transition: color var(--transition);
+  }
+  .sheet-close:hover { color: var(--color-text); }
+
+  .sheet-header {
+    margin-bottom: 4px;
+  }
+  .sheet-cat {
+    font-size: 10px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .sheet-title {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+  .sheet-now {
+    display: inline-block;
+    margin-left: 8px;
+    color: var(--color-accent);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    vertical-align: middle;
+  }
+  .sheet-detail {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 14px 12px;
+    padding: 20px 0;
+    margin-top: 20px;
+    border-top: 1px solid var(--color-border);
+  }
+  .sheet-label {
+    font-size: 10px;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-weight: 500;
+    padding-top: 2px;
+  }
+  .sheet-value {
+    font-size: 14px;
+    color: var(--color-text);
+  }
+  .sheet-description {
+    padding: 20px 0 4px;
+    border-top: 1px solid var(--color-border);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--color-text);
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (min-width: 600px) {
+    .app-title { font-size: 22px; }
+    .event-title { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ============== Sticky Header ============== -->
+  <header class="header" id="header">
+    <div class="header-row">
+      <h1 class="app-title">Local Lens 📍</h1>
+      <div class="view-toggle" role="tablist">
+        <button class="toggle-btn active" data-view="list" role="tab">List</button>
+        <button class="toggle-btn" data-view="timeline" role="tab">Timeline</button>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="search"
+        class="search-input"
+        id="search"
+        placeholder="Search events, venues, neighborhoods..."
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="categories" id="categories"></div>
+
+    <div class="active-pills" id="active-pills"></div>
+  </header>
+
+  <!-- ============== Main content ============== -->
+  <main class="main">
+    <section id="list-view"></section>
+    <section id="timeline-view" hidden></section>
+  </main>
+
+</div>
+
+<!-- ============== Modal / Bottom sheet ============== -->
+<div class="modal-backdrop" id="modal-backdrop"></div>
+<aside class="bottom-sheet" id="bottom-sheet" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="sheet-handle"></div>
+  <button class="sheet-close" id="sheet-close" aria-label="Close">×</button>
+  <div id="sheet-content"></div>
+</aside>
+
+<script>
+/* =========================================================================
+   Local Lens — City Events Tracker
+   Single-file vanilla JS. All state lives in plain variables below.
+   ========================================================================= */
+
+/* ---------- Data ---------- */
+const EVENTS = [
+  { id: 1, title: "Jazz Night at The Rooftop", venue: "Sky Lounge", category: "🎷 Music", neighborhood: "Downtown", date_start: "2026-06-01", date_end: "2026-06-01", price: "$$", description: "Live jazz trio with a city view." },
+  { id: 2, title: "Modern Sculpture Exhibition", venue: "City Arts Museum", category: "🖼️ Art", neighborhood: "Midtown", date_start: "2026-05-20", date_end: "2026-07-15", description: "A 2-month showcase of contemporary sculpture." },
+  { id: 3, title: "Street Food Festival", venue: "Riverside Park", category: "🍜 Food", neighborhood: "East Side", date_start: "2026-06-07", date_end: "2026-06-09", price: "$", description: "30+ vendors, live cooking demos." },
+  { id: 4, title: "Indie Film Screening", venue: "The Criterion", category: "🎬 Film", neighborhood: "West Village", date_start: "2026-06-03", date_end: "2026-06-03", price: "$$$", description: "Premiere of award-winning short films." },
+  { id: 5, title: "Pop-Up Vintage Market", venue: "Union Square", category: "🛍️ Market", neighborhood: "Downtown", date_start: "2026-06-14", date_end: "2026-06-15", price: "Free", description: "Curated vintage clothing and records." },
+  { id: 6, title: "Photography Walk", venue: "Waterfront District", category: "📸 Art", neighborhood: "Harbor", date_start: "2026-06-08", date_end: "2026-06-08", price: "Free", description: "Guided 2-hour street photography walk." },
+  { id: 7, title: "Electronic Music Night", venue: "The Basement", category: "🎷 Music", neighborhood: "East Side", date_start: "2026-06-13", date_end: "2026-06-13", price: "$$", description: "Techno and house music until 4am." },
+  { id: 8, title: "Watercolor Workshop", venue: "Studio Craft", category: "🖼️ Art", neighborhood: "Midtown", date_start: "2026-06-05", date_end: "2026-06-05", price: "$$", description: "Beginner-friendly 3-hour workshop." },
+  { id: 9, title: "Taco Tuesday Pop-Up", venue: "El Mercado", category: "🍜 Food", neighborhood: "West Village", date_start: "2026-06-10", date_end: "2026-06-10", price: "$", description: "Special guest chefs, limited seats." },
+  { id: 10, title: "Silent Disco", venue: "Rooftop Garden", category: "🎷 Music", neighborhood: "Harbor", date_start: "2026-06-21", date_end: "2026-06-21", price: "$$", description: "Three channels, one dance floor." }
+];
+
+/* ---------- Category → color map (from CSS custom props) ---------- */
+const CATEGORY_COLORS = {
+  "🎷 Music":  "var(--cat-music)",
+  "🖼️ Art":    "var(--cat-art)",
+  "📸 Art":    "var(--cat-art)",
+  "🍜 Food":   "var(--cat-food)",
+  "🎬 Film":   "var(--cat-film)",
+  "🛍️ Market": "var(--cat-market)"
+};
+
+/* ---------- Mutable app state ---------- */
+const state = {
+  view: 'list',          // 'list' | 'timeline'
+  search: '',
+  category: 'all',       // emoji string like "🎷" or "all"
+  loading: true          // true while skeleton is visible
+};
+
+/* Pretend "today" is during June 2026 so the demo data has live events.
+   Comment this out and uncomment the real Date() line to use the real clock. */
+const TODAY = new Date('2026-06-08T12:00:00');
+// const TODAY = new Date();
+
+/* ---------- Element refs ---------- */
+const els = {
+  search: document.getElementById('search'),
+  categories: document.getElementById('categories'),
+  activePills: document.getElementById('active-pills'),
+  listView: document.getElementById('list-view'),
+  timelineView: document.getElementById('timeline-view'),
+  toggleBtns: document.querySelectorAll('.toggle-btn'),
+  modalBackdrop: document.getElementById('modal-backdrop'),
+  bottomSheet: document.getElementById('bottom-sheet'),
+  sheetContent: document.getElementById('sheet-content'),
+  sheetClose: document.getElementById('sheet-close')
+};
+
+/* =========================================================================
+   Helpers
+   ========================================================================= */
+
+/* Extract the emoji from a category like "🎷 Music" → "🎷"
+   (everything before the first space). */
+function getEmoji(category) {
+  return category.split(' ')[0];
+}
+
+/* Get color for an event based on its category. */
+function colorFor(category) {
+  return CATEGORY_COLORS[category] || 'var(--color-accent)';
+}
+
+/* Parse YYYY-MM-DD as a local-noon date so timezone shifts don't push the
+   day off by one. */
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d, 12, 0, 0);
+}
+
+/* Strip the time off a Date so two dates can be compared as days. */
+function dayOnly(d) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/* Difference in whole days (end - start). */
+function daysBetween(start, end) {
+  return Math.round((dayOnly(end) - dayOnly(start)) / 86400000);
+}
+
+/* "Jun 7" or "Jun 7 – Jun 9" depending on whether start==end. */
+function formatDateRange(startStr, endStr) {
+  const start = parseDate(startStr);
+  const end = parseDate(endStr);
+  const opts = { month: 'short', day: 'numeric' };
+  const s = start.toLocaleDateString('en-US', opts);
+  if (startStr === endStr) return s;
+  const e = end.toLocaleDateString('en-US', opts);
+  return `${s} – ${e}`;
+}
+
+/* Compact date for the list column.
+   Single day:     "Jun 1"
+   Same month:     "Jun 7\n–9"   (two lines, monospace)
+   Crosses month:  "Jun 28\n–Jul 2" */
+function formatDateCompact(startStr, endStr) {
+  const start = parseDate(startStr);
+  const end = parseDate(endStr);
+  const sMonth = start.toLocaleDateString('en-US', { month: 'short' });
+  const sDay = start.getDate();
+  if (startStr === endStr) return `${sMonth} ${sDay}`;
+  const eDay = end.getDate();
+  if (start.getMonth() === end.getMonth()) {
+    return `${sMonth} ${sDay}<br>–${eDay}`;
+  }
+  const eMonth = end.toLocaleDateString('en-US', { month: 'short' });
+  return `${sMonth} ${sDay}<br>–${eMonth} ${eDay}`;
+}
+
+/* Is TODAY within [start, end]? */
+function isHappeningNow(ev) {
+  const today = dayOnly(TODAY);
+  return today >= dayOnly(parseDate(ev.date_start)) &&
+         today <= dayOnly(parseDate(ev.date_end));
+}
+
+/* Does the event start within the next 7 days (and not started yet)? */
+function isThisWeek(ev) {
+  const today = dayOnly(TODAY);
+  const start = dayOnly(parseDate(ev.date_start));
+  const diff = daysBetween(today, start);
+  return diff > 0 && diff <= 7;
+}
+
+/* =========================================================================
+   Filtering
+   ========================================================================= */
+
+/* Apply search + category filters to the EVENTS list. */
+function getFilteredEvents() {
+  const q = state.search.trim().toLowerCase();
+  return EVENTS.filter(ev => {
+    // Category filter (compare on the emoji prefix only,
+    // since "🖼️ Art" and "📸 Art" share label "Art" but we filter by emoji)
+    if (state.category !== 'all') {
+      if (getEmoji(ev.category) !== state.category) return false;
+    }
+    // Text search across title, venue, neighborhood
+    if (q) {
+      const hay = (ev.title + ' ' + ev.venue + ' ' + ev.neighborhood).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+/* =========================================================================
+   Render: category filter row
+   ========================================================================= */
+
+/* Build the round emoji buttons from the unique categories in EVENTS,
+   plus a leading "All" pill button. */
+function renderCategories() {
+  // Unique emoji set, preserving first-seen order
+  const seen = new Set();
+  const emojis = [];
+  EVENTS.forEach(ev => {
+    const e = getEmoji(ev.category);
+    if (!seen.has(e)) { seen.add(e); emojis.push(e); }
+  });
+
+  els.categories.innerHTML = '';
+
+  // "All" button
+  const allBtn = document.createElement('button');
+  allBtn.className = 'cat-btn text' + (state.category === 'all' ? ' active' : '');
+  allBtn.textContent = 'All';
+  allBtn.setAttribute('aria-pressed', state.category === 'all');
+  allBtn.addEventListener('click', () => setCategory('all'));
+  els.categories.appendChild(allBtn);
+
+  // One round button per unique emoji
+  emojis.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.className = 'cat-btn' + (state.category === emoji ? ' active' : '');
+    btn.textContent = emoji;
+    btn.setAttribute('aria-label', `Filter by ${emoji}`);
+    btn.setAttribute('aria-pressed', state.category === emoji);
+    btn.addEventListener('click', () => setCategory(emoji));
+    els.categories.appendChild(btn);
+  });
+}
+
+/* =========================================================================
+   Render: active filter pills (below search)
+   ========================================================================= */
+
+function renderActivePills() {
+  els.activePills.innerHTML = '';
+
+  if (state.category !== 'all') {
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.innerHTML = `${state.category} <button class="pill-close" aria-label="Clear category">×</button>`;
+    pill.querySelector('button').addEventListener('click', () => setCategory('all'));
+    els.activePills.appendChild(pill);
+  }
+
+  if (state.search.trim()) {
+    const pill = document.createElement('span');
+    pill.className = 'pill';
+    pill.innerHTML = `"${state.search.trim()}" <button class="pill-close" aria-label="Clear search">×</button>`;
+    pill.querySelector('button').addEventListener('click', () => {
+      state.search = '';
+      els.search.value = '';
+      render();
+    });
+    els.activePills.appendChild(pill);
+  }
+}
+
+/* =========================================================================
+   Render: LIST VIEW
+   ========================================================================= */
+
+/* Three shimmering placeholder rows to simulate loading. */
+function renderSkeleton() {
+  els.listView.innerHTML = `
+    <div class="event-list">
+      ${[0,1,2].map(() => `
+        <div class="skeleton-card" aria-hidden="true">
+          <div class="skel skel-date"></div>
+          <div class="skel-lines">
+            <div class="skel skel-line med"></div>
+            <div class="skel skel-line short"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* Render the filtered events as cards. */
+function renderList() {
+  const events = getFilteredEvents();
+
+  if (events.length === 0) {
+    els.listView.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">🔍</div>
+        <p>No events match your search</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Sort by start date (ascending)
+  events.sort((a, b) => parseDate(a.date_start) - parseDate(b.date_start));
+
+  const list = document.createElement('div');
+  list.className = 'event-list';
+
+  events.forEach(ev => {
+    const card = document.createElement('article');
+    card.className = 'event-card';
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+
+    const now = isHappeningNow(ev);
+    const week = !now && isThisWeek(ev);
+
+    // Editorial date: compact monospace, e.g. "Jun 1" or "Jun 7–9"
+    const dateText = formatDateCompact(ev.date_start, ev.date_end);
+
+    card.innerHTML = `
+      <div class="event-date-col">${dateText}</div>
+      <div class="event-body">
+        <div class="event-title">
+          ${now ? `<span class="now-dot" aria-label="Happening now">●</span>` : ''}
+          <span>${escapeHtml(ev.title)}</span>
+        </div>
+        <div class="event-meta">${escapeHtml(ev.venue)} · ${escapeHtml(ev.neighborhood)}</div>
+        <div class="event-bottom-row">
+          ${ev.price ? `<span class="price-badge">${escapeHtml(ev.price)}</span>` : ''}
+          ${week ? `<span class="badge-week">This Week</span>` : ''}
+        </div>
+      </div>
+      <div class="chevron">›</div>
+    `;
+
+    card.addEventListener('click', () => openSheet(ev));
+    card.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(ev); }
+    });
+
+    list.appendChild(card);
+  });
+
+  els.listView.innerHTML = '';
+  els.listView.appendChild(list);
+}
+
+/* Minimal HTML escape for user-derived strings going into innerHTML. */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
+
+/* =========================================================================
+   Render: TIMELINE VIEW
+   ========================================================================= */
+
+/* Build a horizontal timeline of the current month (TODAY's month).
+   - Rows: one per venue (only venues with events in the current month).
+   - Columns: each day of the month.
+   - Bars: each event clipped to the visible month.
+   - Today's column gets a vertical gold line overlay. */
+function renderTimeline() {
+  const filtered = getFilteredEvents();
+
+  // Anchor the timeline to TODAY's month
+  const year = TODAY.getFullYear();
+  const month = TODAY.getMonth();
+  const monthStart = new Date(year, month, 1, 12);
+  const monthEnd = new Date(year, month + 1, 0, 12); // last day of month
+  const daysInMonth = monthEnd.getDate();
+
+  // Keep only events that overlap the current month
+  const monthEvents = filtered.filter(ev => {
+    const s = parseDate(ev.date_start);
+    const e = parseDate(ev.date_end);
+    return e >= monthStart && s <= monthEnd;
+  });
+
+  if (monthEvents.length === 0) {
+    els.timelineView.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📅</div>
+        <p>No events this month match your filters</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Unique venues in display order
+  const venueSet = new Set();
+  const venues = [];
+  monthEvents.forEach(ev => {
+    if (!venueSet.has(ev.venue)) {
+      venueSet.add(ev.venue);
+      venues.push(ev.venue);
+    }
+  });
+
+  // Layout constants
+  const VENUE_COL_W = 140; // px
+  const DAY_COL_W = 56;    // px
+  const ROW_H = 56;        // px
+  const HEADER_H = 48;     // px
+  const BAR_H = 28;        // px
+
+  // Build the grid container
+  const wrap = document.createElement('div');
+  wrap.className = 'timeline-wrap';
+
+  const grid = document.createElement('div');
+  grid.className = 'timeline';
+  grid.style.gridTemplateColumns = `${VENUE_COL_W}px repeat(${daysInMonth}, ${DAY_COL_W}px)`;
+  grid.style.gridTemplateRows = `${HEADER_H}px repeat(${venues.length}, ${ROW_H}px)`;
+  grid.style.width = `${VENUE_COL_W + daysInMonth * DAY_COL_W}px`;
+
+  // Month label in the top-left corner cell
+  const monthLabel = monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  const corner = document.createElement('div');
+  corner.className = 'tl-venue-cell corner';
+  corner.textContent = monthLabel;
+  grid.appendChild(corner);
+
+  // Day header cells
+  const todayDay = (TODAY.getFullYear() === year && TODAY.getMonth() === month) ? TODAY.getDate() : -1;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(year, month, d, 12);
+    const dow = date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
+    const cell = document.createElement('div');
+    cell.className = 'tl-header-cell' + (d === todayDay ? ' today' : '');
+    cell.innerHTML = `<span class="dow">${dow}</span><span class="day-num">${d}</span>`;
+    grid.appendChild(cell);
+  }
+
+  // Venue rows: venue label + empty day cells
+  venues.forEach(venue => {
+    const venueCell = document.createElement('div');
+    venueCell.className = 'tl-venue-cell';
+    venueCell.textContent = venue;
+    grid.appendChild(venueCell);
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'tl-row-cell';
+      grid.appendChild(cell);
+    }
+  });
+
+  wrap.appendChild(grid);
+
+  // ---- Overlay layer for event bars + today line ----
+  // Position bars absolutely inside the grid, positioned relative to the
+  // grid's content box.
+  grid.style.position = 'relative';
+
+  monthEvents.forEach(ev => {
+    const venueIdx = venues.indexOf(ev.venue);
+    if (venueIdx === -1) return;
+
+    // Clip event range to the current month
+    const s = parseDate(ev.date_start);
+    const e = parseDate(ev.date_end);
+    const startDay = Math.max(1, s < monthStart ? 1 : s.getDate());
+    const endDay = Math.min(daysInMonth, e > monthEnd ? daysInMonth : e.getDate());
+
+    const left = VENUE_COL_W + (startDay - 1) * DAY_COL_W + 4;
+    const width = (endDay - startDay + 1) * DAY_COL_W - 8;
+    const top = HEADER_H + venueIdx * ROW_H + (ROW_H - BAR_H) / 2;
+
+    const bar = document.createElement('button');
+    bar.className = 'event-bar';
+    bar.style.left = `${left}px`;
+    bar.style.width = `${width}px`;
+    bar.style.top = `${top}px`;
+    bar.title = ev.title;
+    bar.textContent = ev.title;
+    bar.addEventListener('click', () => openSheet(ev));
+
+    grid.appendChild(bar);
+  });
+
+  // Today vertical line
+  if (todayDay > 0) {
+    const line = document.createElement('div');
+    line.className = 'today-line';
+    line.style.left = `${VENUE_COL_W + (todayDay - 1) * DAY_COL_W + DAY_COL_W / 2 - 1}px`;
+    grid.appendChild(line);
+  }
+
+  els.timelineView.innerHTML = '';
+  els.timelineView.appendChild(wrap);
+}
+
+/* =========================================================================
+   Bottom sheet modal
+   ========================================================================= */
+
+/* Open the modal with full event details. */
+function openSheet(ev) {
+  const now = isHappeningNow(ev);
+
+  els.sheetContent.innerHTML = `
+    <div class="sheet-header">
+      <div class="sheet-cat">${escapeHtml(ev.category)}</div>
+      <h2 class="sheet-title">
+        ${escapeHtml(ev.title)}
+        ${now ? `<span class="sheet-now">● Happening Now</span>` : ''}
+      </h2>
+    </div>
+
+    <div class="sheet-detail">
+      <div class="sheet-label">Venue</div>
+      <div class="sheet-value">${escapeHtml(ev.venue)}</div>
+      <div class="sheet-label">Neighborhood</div>
+      <div class="sheet-value">${escapeHtml(ev.neighborhood)}</div>
+      <div class="sheet-label">Dates</div>
+      <div class="sheet-value">${formatDateRange(ev.date_start, ev.date_end)}</div>
+      ${ev.price ? `
+        <div class="sheet-label">Price</div>
+        <div class="sheet-value">${escapeHtml(ev.price)}</div>
+      ` : ''}
+    </div>
+
+    <div class="sheet-description">${escapeHtml(ev.description)}</div>
+  `;
+
+  els.modalBackdrop.classList.add('open');
+  els.bottomSheet.classList.add('open');
+  els.bottomSheet.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+/* Close the modal. */
+function closeSheet() {
+  els.modalBackdrop.classList.remove('open');
+  els.bottomSheet.classList.remove('open');
+  els.bottomSheet.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+/* =========================================================================
+   State setters & main render dispatcher
+   ========================================================================= */
+
+function setCategory(emoji) {
+  state.category = emoji;
+  render();
+}
+
+function setView(view) {
+  state.view = view;
+  els.toggleBtns.forEach(btn => {
+    const isActive = btn.dataset.view === view;
+    btn.classList.toggle('active', isActive);
+    btn.setAttribute('aria-selected', isActive);
+  });
+  els.listView.hidden = view !== 'list';
+  els.timelineView.hidden = view !== 'timeline';
+  render();
+}
+
+/* Master render — re-renders only the visible view + the pills. */
+function render() {
+  renderCategories();
+  renderActivePills();
+
+  if (state.loading) {
+    renderSkeleton();
+    return;
+  }
+
+  if (state.view === 'list') {
+    renderList();
+  } else {
+    renderTimeline();
+  }
+}
+
+/* =========================================================================
+   Event wiring
+   ========================================================================= */
+
+// Search: filter as you type
+els.search.addEventListener('input', e => {
+  state.search = e.target.value;
+  render();
+});
+
+// View toggle
+els.toggleBtns.forEach(btn => {
+  btn.addEventListener('click', () => setView(btn.dataset.view));
+});
+
+// Modal close
+els.modalBackdrop.addEventListener('click', closeSheet);
+els.sheetClose.addEventListener('click', closeSheet);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeSheet();
+});
+
+/* =========================================================================
+   Boot: show skeleton for 600ms, then render
+   ========================================================================= */
+render(); // initial render: skeleton
+setTimeout(() => {
+  state.loading = false;
+  render();
+}, 600);
+</script>
+</body>
+</html>
